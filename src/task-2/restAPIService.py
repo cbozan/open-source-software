@@ -1,5 +1,6 @@
 # Required Libraries - Gerekli Kütüphaneler
 #import os
+#os.system("pip install pytrends")
 #os.system("pip install flask")
 #os.system("pip install flask_restful")
 #os.system("pip install pandas")
@@ -8,6 +9,7 @@ from flask import Flask, request
 from flask_restful import Api, Resource
 import pandas as pd
 import json
+from pytrends.request import TrendReq
 
 app = Flask(__name__)
 api = Api(app)
@@ -47,8 +49,28 @@ class DefaultParameters(Resource):
 
         return default_parameters, 200
 
+class Trends(Resource):
+    def get(self):
+        f = open("default_parameters.json", "r")
+        default_parameters = json.loads(f.read())
+        f.close()
+
+        # hl: host language - Makine dilini belirtir (tr-TR şeklinde)
+        # tz: time zone - zaman dilimi
+        # pn: location (pn) - lokasyon
+        pytrends = TrendReq(hl=default_parameters["hl"], tz=default_parameters["tz"])
+        data = pytrends.trending_searches(pn=default_parameters["pn"])
+
+        # Parse DataFrame (data) - data'yı stringe dönüştür.
+        dt = '{'
+        for data_id in data.index:
+            dt += '"{}": "{}",'.format(data_id, data.loc[data_id][0])
+        dt = dt[:-1] + '}'
+
+        return json.loads(dt), 200
 
 api.add_resource(DefaultParameters, "/default_parameters")
+api.add_resource(Trends, "/trends")
 
 if __name__ == "__main__":
     app.run()
